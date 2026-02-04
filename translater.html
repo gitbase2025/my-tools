@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>My AI Translator (2026)</title>
+    <style>
+        /* 基本デザイン */
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #202020; 
+            color: #e0e0e0; 
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden; 
+        }
+
+        .main-wrapper {
+            width: 95%;
+            max-width: 800px;
+            height: 95vh;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        h1 { text-align: center; color: #aaa; margin: 0; font-size: 1.2rem; }
+
+        /* 設定エリア */
+        .settings-area {
+            background: #333;
+            padding: 10px;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .api-row {
+            display: flex;
+            gap: 10px;
+        }
+
+        .api-input {
+            flex: 1;
+            background: #222;
+            border: 1px solid #444;
+            color: white;
+            padding: 8px;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+        
+        select {
+            background: #222;
+            border: 1px solid #444;
+            color: white;
+            padding: 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            flex: 1;
+        }
+
+        .btn-mini {
+            background: #555;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            white-space: nowrap;
+        }
+        .btn-mini:hover { background: #666; }
+
+        /* 入力エリア */
+        .input-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        textarea {
+            width: 100%;
+            height: 100%;
+            background: #252525;
+            border: 1px solid #444;
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            resize: none;
+            font-size: 1.1rem;
+            line-height: 1.6;
+            box-sizing: border-box;
+        }
+        textarea:focus { outline: 2px solid #2196F3; }
+
+        /* ボタン群 */
+        .controls {
+            display: flex;
+            gap: 10px;
+            height: 50px;
+        }
+        button.translate-btn {
+            flex: 1;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.0rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        button.translate-btn:active { transform: scale(0.98); }
+
+        .btn-ja-en { background: #E91E63; color: white; }
+        .btn-en-ja { background: #2196F3; color: white; }
+        
+        /* 結果表示エリア */
+        .result-box {
+            flex: 1;
+            background: #1a1a1a;
+            border: 1px solid #555;
+            border-radius: 10px;
+            padding: 20px;
+            font-size: 1.2rem;
+            line-height: 1.6;
+            color: #4caf50;
+            overflow-y: auto;
+            position: relative;
+            cursor: pointer;
+            white-space: pre-wrap;
+        }
+        .result-box:hover { background: #0d2b10; }
+        
+        .copy-hint {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            font-size: 0.8rem;
+            color: #aaa;
+            pointer-events: none;
+        }
+
+        .loading { color: #aaa; font-style: italic; }
+        .error-msg { color: #ff6b6b; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+
+    <div class="main-wrapper">
+        <h1>My AI Translator (2026)</h1>
+
+        <div class="settings-area" id="settingsBox">
+            <div class="api-row">
+                <input type="password" id="apiKey" class="api-input" placeholder="Paste Gemini API Key here">
+                <button class="btn-mini" onclick="saveKey()">Save Key</button>
+            </div>
+            <div class="api-row">
+                <select id="modelSelect">
+                    <option value="gemini-2.5-flash">gemini-2.5-flash (推奨・最新)</option>
+                    <option value="gemini-2.5-pro">gemini-2.5-pro (高性能)</option>
+                    <option value="gemini-2.0-flash">gemini-2.0-flash (安定)</option>
+                    <option value="gemini-2.0-flash-lite">gemini-2.0-flash-lite (軽量)</option>
+                </select>
+                </div>
+        </div>
+
+        <div class="input-container">
+            <textarea id="inputText" placeholder="翻訳したい文章を入力..."></textarea>
+        </div>
+
+        <div class="controls">
+            <button class="translate-btn btn-ja-en" onclick="translateText('JA_TO_EN')">🇯🇵 日 &rarr; 英 🇺🇸</button>
+            <button class="translate-btn btn-en-ja" onclick="translateText('EN_TO_JA')">🇺🇸 英 &rarr; 日 🇯🇵</button>
+        </div>
+
+        <div class="result-box" id="resultBox" onclick="copyResult()">
+            <span style="color:#555;">(ここに翻訳結果が表示されます)</span>
+            <div class="copy-hint">[CLICK TO COPY]</div>
+        </div>
+    </div>
+
+    <script>
+        window.onload = function() {
+            const savedKey = localStorage.getItem("gemini_api_key");
+            if (savedKey) {
+                document.getElementById('apiKey').value = savedKey;
+            }
+            const savedModel = localStorage.getItem("gemini_model");
+            if (savedModel) {
+                document.getElementById('modelSelect').value = savedModel;
+            }
+        };
+
+        function saveKey() {
+            const key = document.getElementById('apiKey').value;
+            if (key) {
+                localStorage.setItem("gemini_api_key", key);
+                alert("Key Saved!");
+            }
+        }
+
+        document.getElementById('modelSelect').addEventListener('change', function() {
+            localStorage.setItem("gemini_model", this.value);
+        });
+
+        async function translateText(direction) {
+            const text = document.getElementById('inputText').value;
+            const apiKey = localStorage.getItem("gemini_api_key");
+            const modelName = document.getElementById('modelSelect').value;
+            const resultBox = document.getElementById('resultBox');
+
+            if (!apiKey) { alert("APIキーがありません"); return; }
+            if (!text) return;
+
+            resultBox.innerHTML = '<span class="loading">Translating...</span>';
+
+            let systemInstruction = "";
+            if (direction === 'JA_TO_EN') {
+                systemInstruction = "You are a professional translator. Translate the following Japanese text into natural, fluent English. Output ONLY the translated text.";
+            } else {
+                systemInstruction = "あなたはプロの翻訳家です。以下の英語のテキストを、自然で流暢な日本語に翻訳してください。翻訳結果のみを出力してください。";
+            }
+
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+
+            const data = {
+                contents: [{
+                    parts: [{ text: `${systemInstruction}\n\n[Text]: ${text}` }]
+                }]
+            };
+
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const json = await response.json();
+                
+                if (json.candidates && json.candidates[0].content) {
+                    resultBox.innerText = json.candidates[0].content.parts[0].text.trim();
+                } else {
+                    resultBox.innerHTML = `<span class="error-msg">Error: ${json.error?.message || JSON.stringify(json)}</span>`;
+                }
+
+            } catch (e) {
+                resultBox.innerText = "Connection Error: " + e.message;
+            }
+        }
+
+        function copyResult() {
+            const text = document.getElementById('resultBox').innerText;
+            if (!text || text.includes("(翻訳結果") || text.includes("Error")) return;
+
+            navigator.clipboard.writeText(text).then(() => {
+                const box = document.getElementById('resultBox');
+                box.style.backgroundColor = "#333";
+                setTimeout(() => { box.style.backgroundColor = "#1a1a1a"; }, 200);
+            });
+        }
+    </script>
+</body>
+</html>

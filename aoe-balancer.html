@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AoE Team Balancer</title>
+    <style>
+        /* 基本設定 */
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #202020; 
+            color: #e0e0e0; 
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden; 
+        }
+
+        .main-wrapper {
+            display: flex;
+            width: 95%;
+            max-width: 1200px;
+            height: 90vh;
+            gap: 20px;
+            align-items: flex-start;
+        }
+
+        /* 左側：入力エリア */
+        .input-panel {
+            flex: 0 0 340px;
+            display: flex;
+            flex-direction: column;
+            background: #252525;
+            padding: 25px;
+            border-radius: 12px;
+            order: 1;
+            height: auto; 
+            max-height: 100%;
+        }
+
+        /* 右側：結果表示エリア */
+        .result-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #2a2a2a;
+            border-radius: 12px;
+            padding: 25px;
+            border: 1px solid #444;
+            opacity: 0.5;
+            transition: opacity 0.3s;
+            order: 2;
+            justify-content: flex-start;
+            height: auto;
+            min-height: 500px;
+        }
+        
+        .result-panel.active {
+            opacity: 1;
+            box-shadow: 0 0 20px rgba(0,0,0,0.6);
+        }
+
+        /* 結果上部 */
+        .result-top {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .diff-display {
+            text-align: center;
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #f0a500;
+        }
+
+        .teams-box {
+            display: flex;
+            gap: 20px;
+        }
+
+        .team-card {
+            background: #333;
+            border-radius: 8px;
+            padding: 20px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            border-left: 6px solid;
+            min-height: 200px;
+        }
+        .team-a { border-color: #4caf50; }
+        .team-b { border-color: #f44336; }
+
+        .team-header {
+            font-size: 1.4rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px solid #444;
+            padding-bottom: 8px;
+        }
+        .team-list {
+            font-size: 1.3rem;
+            line-height: 1.7;
+            flex: 1;
+        }
+        .team-stats {
+            margin-top: 15px;
+            text-align: right;
+            color: #aaa;
+            font-size: 1.1rem;
+            font-weight: bold;
+        }
+
+        /* 手入力用：超巨大数字表示エリア */
+        .manual-typing-area {
+            background: #000;
+            border: 2px solid #555;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            margin-top: auto;
+        }
+        
+        .manual-label {
+            color: #aaa;
+            font-size: 1rem;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .big-numbers {
+            font-family: 'Courier New', monospace;
+            font-size: 3.5rem;
+            font-weight: bold;
+            color: #fff;
+            letter-spacing: 5px;
+        }
+        
+        .num-1 { color: #4caf50; } /* 緑 */
+        .num-2 { color: #f44336; } /* 赤 */
+
+        /* 入力欄デザイン */
+        h1 { text-align: center; font-size: 1.6rem; color: #ccc; margin: 0 0 20px 0; }
+        .input-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+        .player-row { display: flex; align-items: center; background: #333; padding: 8px 15px; border-radius: 6px; border: 1px solid #444; }
+        .label { width: 50px; color: #f0a500; font-weight: bold; font-size: 1.4rem; }
+        /* value属性を消し、placeholderだけにしました */
+        input[type="number"] { flex: 1; background: transparent; border: none; color: white; font-size: 1.8rem; text-align: right; outline: none; font-family: monospace; font-weight: bold; }
+        input[type="number"]::-webkit-outer-spin-button, input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type="number"] { -moz-appearance: textfield; }
+        input:focus { background-color: #3a3a3a; }
+
+        /* ボタン */
+        .controls { display: flex; flex-direction: column; gap: 12px; }
+        button { padding: 15px; font-size: 1.2rem; cursor: pointer; border: none; border-radius: 8px; font-weight: bold; transition: opacity 0.2s; }
+        button:active { transform: scale(0.98); }
+        .btn-calc { background-color: #f0a500; color: #000; }
+        .btn-calc:hover { background-color: #ffc107; }
+        .btn-reset { background-color: #444; color: #aaa; margin-top: 5px; }
+        .btn-reset:hover { background-color: #555; color: white; }
+        
+        /* レスポンシブ */
+        @media (max-width: 768px) {
+            .main-wrapper { flex-direction: column; height: auto; padding: 20px 0; overflow: auto; align-items: stretch; }
+            body { overflow: auto; height: auto; display: block; }
+            .input-panel { order: 1; flex: none; width: auto; margin: 0 10px; }
+            .result-panel { order: 2; flex: none; margin: 10px; min-height: auto; }
+            .teams-box { flex-direction: column; }
+            .big-numbers { font-size: 2.5rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="main-wrapper">
+        
+        <div class="input-panel">
+            <h1>AoE Balancer</h1>
+            <div class="input-list" id="inputContainer">
+                </div>
+
+            <div class="controls">
+                <button class="btn-calc" onclick="calculateTeams()">計算 (Enter)</button>
+                <button class="btn-reset" onclick="resetForm()">リセット</button>
+            </div>
+        </div>
+
+        <div class="result-panel" id="resultPanel">
+            
+            <div class="result-top">
+                <div class="diff-display" id="diffInfo">READY</div>
+                
+                <div class="teams-box">
+                    <div class="team-card team-a">
+                        <div class="team-header">
+                            <span>TEAM 1</span>
+                            <span id="teamA-avg">Avg: -</span>
+                        </div>
+                        <div class="team-list" id="teamA-list">
+                            Waiting...
+                        </div>
+                        <div class="team-stats" id="teamA-total">Total: 0</div>
+                    </div>
+
+                    <div class="team-card team-b">
+                        <div class="team-header">
+                            <span>TEAM 2</span>
+                            <span id="teamB-avg">Avg: -</span>
+                        </div>
+                        <div class="team-list" id="teamB-list">
+                            Waiting...
+                        </div>
+                        <div class="team-stats" id="teamB-total">Total: 0</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="manual-typing-area">
+                <div class="manual-label">TYPING GUIDE (1=Green, 2=Red)</div>
+                <div class="big-numbers" id="manualNumbers">
+                    - - - - - - - -
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <script>
+        let finalTeamA = [];
+        let finalTeamB = [];
+        let finalDiff = 0;
+
+        // 初期化処理
+        const inputContainer = document.getElementById('inputContainer');
+        for (let i = 1; i <= 8; i++) {
+            // 初期値(value)を削除し、空欄にしました
+            inputContainer.innerHTML += `
+                <div class="player-row">
+                    <span class="label">P${i}</span>
+                    <input type="number" id="elo${i}" placeholder="0" value="" onkeydown="handleEnter(event, ${i})">
+                </div>
+            `;
+        }
+
+        function handleEnter(e, index) {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                if (index < 8) {
+                    document.getElementById(`elo${index + 1}`).select();
+                } else {
+                    calculateTeams();
+                }
+            }
+        }
+
+        function calculateTeams() {
+            let players = [];
+            for (let i = 1; i <= 8; i++) {
+                let elo = parseInt(document.getElementById(`elo${i}`).value) || 0;
+                players.push({ id: i, name: `P${i}`, elo });
+            }
+
+            let bestDiff = Infinity;
+            let bestTeamA = [];
+            let bestTeamB = [];
+            let indices = [0, 1, 2, 3, 4, 5, 6, 7];
+
+            function getCombinations(sourceArray, comboLength) {
+                if (comboLength > sourceArray.length) return [];
+                const combos = [];
+                const makeNextCombos = (workingCombo, currentIndex) => {
+                    if (workingCombo.length === comboLength) {
+                        combos.push(workingCombo);
+                    } else {
+                        for (let i = currentIndex; i < sourceArray.length; i++) {
+                            makeNextCombos(workingCombo.concat(sourceArray[i]), i + 1);
+                        }
+                    }
+                }
+                makeNextCombos([], 0);
+                return combos;
+            }
+
+            const allCombinations = getCombinations(indices, 4);
+            const totalEloAll = players.reduce((sum, p) => sum + p.elo, 0);
+
+            allCombinations.forEach(comboIndices => {
+                let currentTeamA = [];
+                let currentTeamA_Elo = 0;
+                comboIndices.forEach(idx => {
+                    currentTeamA.push(players[idx]);
+                    currentTeamA_Elo += players[idx].elo;
+                });
+
+                let currentTeamB = players.filter((_, idx) => !comboIndices.includes(idx));
+                let diff = Math.abs(currentTeamA_Elo - (totalEloAll - currentTeamA_Elo));
+
+                if (diff < bestDiff) {
+                    bestDiff = diff;
+                    bestTeamA = currentTeamA;
+                    bestTeamB = currentTeamB;
+                }
+            });
+
+            finalTeamA = bestTeamA;
+            finalTeamB = bestTeamB;
+            finalDiff = bestDiff;
+
+            renderResult(bestTeamA, bestTeamB, bestDiff);
+        }
+
+        function renderResult(teamA, teamB, diff) {
+            document.getElementById('resultPanel').classList.add('active');
+            document.getElementById('diffInfo').innerHTML = `Diff: ${diff}`;
+
+            const renderList = (team, elementId) => {
+                // ELOが0の場合は (0) ではなく何も表示しないように調整してもいいが、今回はそのまま
+                const listHtml = team.map(p => `<div>${p.name} (${p.elo})</div>`).join('');
+                document.getElementById(elementId).innerHTML = listHtml;
+            };
+
+            const getStats = (team) => {
+                const total = team.reduce((s, p) => s + p.elo, 0);
+                return { total, avg: Math.round(total / 4) };
+            };
+
+            const statsA = getStats(teamA);
+            const statsB = getStats(teamB);
+
+            renderList(teamA, 'teamA-list');
+            renderList(teamB, 'teamB-list');
+
+            document.getElementById('teamA-total').innerText = `Total: ${statsA.total}`;
+            document.getElementById('teamA-avg').innerText = `Avg: ${statsA.avg}`;
+            
+            document.getElementById('teamB-total').innerText = `Total: ${statsB.total}`;
+            document.getElementById('teamB-avg').innerText = `Avg: ${statsB.avg}`;
+
+            updateManualDisplay(statsA.total, statsB.total, diff);
+        }
+
+        function updateManualDisplay(sumA, sumB, diff) {
+            const teamA_IDs = finalTeamA.map(p => p.id);
+            let html = "";
+            
+            for (let i = 1; i <= 8; i++) {
+                const isTeam1 = teamA_IDs.includes(i);
+                const num = isTeam1 ? "1" : "2";
+                const colorClass = isTeam1 ? "num-1" : "num-2";
+                
+                html += `<span class="${colorClass}">${num}</span>`;
+                
+                if (i < 8) {
+                    html += ` `;
+                }
+            }
+            
+            document.getElementById('manualNumbers').innerHTML = html;
+        }
+
+        function resetForm() {
+            if(confirm("Reset?")){
+                for (let i = 1; i <= 8; i++) {
+                    // リセット時も空欄にする
+                    document.getElementById(`elo${i}`).value = "";
+                }
+                document.getElementById('resultPanel').classList.remove('active');
+                document.getElementById('teamA-list').innerText = "Waiting...";
+                document.getElementById('teamB-list').innerText = "Waiting...";
+                document.getElementById('diffInfo').innerText = "READY";
+                document.getElementById('teamA-total').innerText = "Total: 0";
+                document.getElementById('teamB-total').innerText = "Total: 0";
+                document.getElementById('teamA-avg').innerText = "Avg: -";
+                document.getElementById('teamB-avg').innerText = "Avg: -";
+                document.getElementById('manualNumbers').innerHTML = "- - - - - - - -";
+                finalTeamA = [];
+            }
+        }
+    </script>
+</body>
+</html>
