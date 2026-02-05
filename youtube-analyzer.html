@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>YouTube Deep Analyzer</title>
+    <style>
+        /* 基本デザイン (共通) */
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #202020; 
+            color: #e0e0e0; 
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden; 
+        }
+
+        .main-wrapper {
+            width: 95%;
+            max-width: 900px; /* 分析結果が長くなるので幅広に */
+            height: 95vh;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        h1 { text-align: center; color: #ff4444; margin: 0; font-size: 1.4rem; font-weight: bold; }
+
+        /* 設定エリア */
+        .settings-area {
+            background: #333;
+            padding: 10px;
+            border-radius: 8px;
+            display: flex;
+            gap: 10px;
+        }
+        select {
+            background: #222;
+            border: 1px solid #444;
+            color: white;
+            padding: 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            flex: 1;
+        }
+
+        /* 入力エリア */
+        .input-container {
+            flex: 0 0 150px; /* 入力欄は小さめでOK */
+            display: flex;
+            flex-direction: column;
+        }
+        textarea {
+            width: 100%;
+            height: 100%;
+            background: #252525;
+            border: 1px solid #444;
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            resize: none;
+            font-size: 0.9rem;
+            box-sizing: border-box;
+        }
+        textarea:focus { outline: 2px solid #ff4444; }
+
+        /* ボタン */
+        .analyze-btn {
+            height: 50px;
+            background: #ff4444; /* YouTube Red */
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.1s, background 0.2s;
+        }
+        .analyze-btn:hover { background: #cc0000; }
+        .analyze-btn:active { transform: scale(0.98); }
+
+        /* 結果表示エリア */
+        .result-box {
+            flex: 1;
+            background: #1a1a1a;
+            border: 1px solid #555;
+            border-radius: 10px;
+            padding: 25px;
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: #ddd;
+            overflow-y: auto;
+            white-space: pre-wrap; /* 改行を反映 */
+        }
+        
+        /* Markdownっぽい見出しの装飾 */
+        .result-box strong { color: #ff9999; }
+        .loading { color: #aaa; font-style: italic; text-align: center; margin-top: 20px; display: block;}
+    </style>
+</head>
+<body>
+
+    <div class="main-wrapper">
+        <h1>YouTube Deep Analyzer & Fact Check</h1>
+
+        <div class="settings-area">
+            <select id="modelSelect">
+                <option value="gemini-2.5-flash">gemini-2.5-flash (推奨・高速)</option>
+                <option value="gemini-2.5-pro">gemini-2.5-pro (高精度・長文向き)</option>
+                <option value="gemini-2.0-flash">gemini-2.0-flash (安定)</option>
+            </select>
+        </div>
+
+        <div class="input-container">
+            <textarea id="inputText" placeholder="Glaspでコピーした文字起こし（Transcript）をここに貼り付けてください..."></textarea>
+        </div>
+
+        <button class="analyze-btn" onclick="analyzeVideo()">分析・ファクトチェックを実行</button>
+
+        <div class="result-box" id="resultBox">
+            <span style="color:#555;">(ここに分析結果が表示されます)</span>
+        </div>
+    </div>
+
+    <script>
+        // 起動時に設定をロード
+        window.onload = function() {
+            const savedModel = localStorage.getItem("gemini_model");
+            if (savedModel) {
+                document.getElementById('modelSelect').value = savedModel;
+            }
+        };
+
+        // モデル変更を保存
+        document.getElementById('modelSelect').addEventListener('change', function() {
+            localStorage.setItem("gemini_model", this.value);
+        });
+
+        async function analyzeVideo() {
+            const text = document.getElementById('inputText').value;
+            const apiKey = localStorage.getItem("gemini_api_key"); // 共通のキーを使用
+            const modelName = document.getElementById('modelSelect').value;
+            const resultBox = document.getElementById('resultBox');
+
+            if (!apiKey) {
+                alert("APIキーが見つかりません。先に翻訳ツール(Translator)でキーを保存してください。");
+                return;
+            }
+            if (!text) {
+                alert("文字起こしテキストを貼り付けてください。");
+                return;
+            }
+
+            resultBox.innerHTML = '<span class="loading">Geminiが動画の内容を精査中...<br>※長文の場合、時間がかかることがあります</span>';
+
+            // ★ここが肝：詳細要約とファクトチェックのための指示書
+            const systemInstruction = `
+あなたは優秀なリサーチャー兼ファクトチェッカーです。
+提供されたYouTube動画の文字起こし（Transcript）を読み、以下の構成で詳細な日本語レポートを作成してください。
+
+【構成】
+1. 📋 詳細要約 (Detailed Summary)
+   - 箇条書きで短く済ませず、文脈や論理展開が分かるように文章で記述してください。
+   - 動画の主張を漏らさず、しかし冗長な繰り返しは省いてください。
+   - 専門用語が出てきた場合は、簡単な補足を加えてください。
+
+2. 🕵️ ファクトチェック & 批判的分析 (Fact Check & Analysis)
+   - 動画内の主張に対して、あなたの持つ外部知識（科学、歴史、経済、統計など）と照らし合わせてください。
+   - 正確な点だけでなく、「誤り」「誇張」「バイアス（偏り）」「議論の余地がある点」があれば鋭く指摘してください。
+   - 動画が特定のポジション（肯定的/否定的）に偏っている場合は、その背景も考察してください。
+
+【注意】
+- 出力はすべて日本語で行ってください。
+- タイムスタンプが含まれている場合は無視して内容を読み取ってください。
+- ユーザーは「要約しすぎないこと」を望んでいます。情報は厚めに記述してください。
+            `;
+
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+
+            const data = {
+                contents: [{
+                    parts: [{ text: `${systemInstruction}\n\n[Transcript Data]:\n${text}` }]
+                }]
+            };
+
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const json = await response.json();
+                
+                if (json.candidates && json.candidates[0].content) {
+                    const resultText = json.candidates[0].content.parts[0].text.trim();
+                    resultBox.innerText = resultText;
+                } else {
+                    resultBox.innerHTML = `<span style="color:#ff6b6b">Error: ${json.error?.message || JSON.stringify(json)}</span>`;
+                }
+
+            } catch (e) {
+                resultBox.innerText = "Connection Error: " + e.message;
+            }
+        }
+    </script>
+</body>
+</html>
