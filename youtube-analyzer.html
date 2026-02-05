@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>YouTube Deep Analyzer</title>
+    <title>YouTube Analyzer (Light)</title>
     <style>
-        /* 基本デザイン (共通) */
+        /* 基本デザイン (ライトモード) */
         body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #202020; 
-            color: #e0e0e0; 
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+            background-color: #f4f6f9; /* 目に優しい薄いグレー */
+            color: #333333; /* 濃いグレーの文字 */
             margin: 0;
             padding: 0;
             height: 100vh;
@@ -21,91 +21,123 @@
 
         .main-wrapper {
             width: 95%;
-            max-width: 900px; /* 分析結果が長くなるので幅広に */
+            max-width: 900px;
             height: 95vh;
             display: flex;
             flex-direction: column;
             gap: 15px;
         }
 
-        h1 { text-align: center; color: #ff4444; margin: 0; font-size: 1.4rem; font-weight: bold; }
+        /* ヘッダー */
+        h1 { 
+            text-align: center; 
+            color: #cc0000; /* YouTube Red (少し暗め) */
+            margin: 0; 
+            font-size: 1.5rem; 
+            font-weight: bold; 
+            padding-bottom: 5px;
+            border-bottom: 2px solid #e0e0e0;
+        }
 
         /* 設定エリア */
         .settings-area {
-            background: #333;
+            background: #ffffff;
             padding: 10px;
             border-radius: 8px;
+            border: 1px solid #ddd;
             display: flex;
             gap: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
         }
         select {
-            background: #222;
-            border: 1px solid #444;
-            color: white;
+            background: #f9f9f9;
+            border: 1px solid #ccc;
+            color: #333;
             padding: 8px;
             border-radius: 4px;
             cursor: pointer;
             flex: 1;
+            font-size: 0.95rem;
         }
 
         /* 入力エリア */
         .input-container {
-            flex: 0 0 150px; /* 入力欄は小さめでOK */
+            flex: 0 0 150px;
             display: flex;
             flex-direction: column;
         }
         textarea {
             width: 100%;
             height: 100%;
-            background: #252525;
-            border: 1px solid #444;
-            color: white;
-            padding: 10px;
+            background: #ffffff;
+            border: 1px solid #ccc;
+            color: #333;
+            padding: 12px;
             border-radius: 8px;
             resize: none;
-            font-size: 0.9rem;
+            font-size: 0.95rem;
             box-sizing: border-box;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
         }
-        textarea:focus { outline: 2px solid #ff4444; }
+        textarea:focus { 
+            outline: 2px solid #cc0000;
+            border-color: #cc0000;
+        }
+        textarea::placeholder { color: #999; }
 
         /* ボタン */
         .analyze-btn {
             height: 50px;
-            background: #ff4444; /* YouTube Red */
+            background: #cc0000;
             color: white;
             border: none;
             border-radius: 8px;
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             font-weight: bold;
             cursor: pointer;
-            transition: transform 0.1s, background 0.2s;
+            transition: background 0.2s, transform 0.1s;
+            box-shadow: 0 4px 6px rgba(204, 0, 0, 0.2);
         }
-        .analyze-btn:hover { background: #cc0000; }
-        .analyze-btn:active { transform: scale(0.98); }
+        .analyze-btn:hover { background: #a80000; }
+        .analyze-btn:active { transform: translateY(1px); }
 
         /* 結果表示エリア */
         .result-box {
             flex: 1;
-            background: #1a1a1a;
-            border: 1px solid #555;
+            background: #ffffff;
+            border: 1px solid #ccc;
             border-radius: 10px;
-            padding: 25px;
-            font-size: 1.1rem;
+            padding: 30px;
+            font-size: 1.05rem;
             line-height: 1.8;
-            color: #ddd;
+            color: #333;
             overflow-y: auto;
-            white-space: pre-wrap; /* 改行を反映 */
+            white-space: pre-wrap;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
         }
         
-        /* Markdownっぽい見出しの装飾 */
-        .result-box strong { color: #ff9999; }
-        .loading { color: #aaa; font-style: italic; text-align: center; margin-top: 20px; display: block;}
+        /* 見出し装飾 */
+        .result-box strong { 
+            color: #cc0000;
+            background: #fff0f0;
+            padding: 0 4px;
+            border-radius: 3px;
+        }
+        
+        .loading { 
+            color: #666; 
+            font-style: italic; 
+            text-align: center; 
+            margin-top: 20px; 
+            display: block;
+        }
+        .error-msg { color: #d32f2f; font-weight: bold; }
     </style>
 </head>
 <body>
 
     <div class="main-wrapper">
-        <h1>YouTube Deep Analyzer & Fact Check</h1>
+        <h1>YouTube Analyzer</h1>
 
         <div class="settings-area">
             <select id="modelSelect">
@@ -119,10 +151,10 @@
             <textarea id="inputText" placeholder="Glaspでコピーした文字起こし（Transcript）をここに貼り付けてください..."></textarea>
         </div>
 
-        <button class="analyze-btn" onclick="analyzeVideo()">分析・ファクトチェックを実行</button>
+        <button class="analyze-btn" onclick="analyzeVideo()">分析・要約を実行</button>
 
         <div class="result-box" id="resultBox">
-            <span style="color:#555;">(ここに分析結果が表示されます)</span>
+            <span style="color:#888;">(ここに分析結果が表示されます)</span>
         </div>
     </div>
 
@@ -146,7 +178,7 @@
             const modelName = document.getElementById('modelSelect').value;
             const resultBox = document.getElementById('resultBox');
 
-            // ★追加：今日の日付を自動取得 (例: 2026年2月5日)
+            // 今日日時の自動取得
             const today = new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' });
 
             if (!apiKey) {
@@ -160,28 +192,31 @@
 
             resultBox.innerHTML = '<span class="loading">Geminiが動画の内容を精査中...<br>※現在の日付(' + today + ')を基準に分析します</span>';
 
-            // ★変更：日付を前提条件としてAIに渡す
+            // ★改良版：最新情報を優先し、過度な批判を防ぐ指示
             const systemInstruction = `
-あなたは優秀なリサーチャー兼ファクトチェッカーです。
-以下の[前提情報]に基づき、提供されたYouTube動画の文字起こし（Transcript）を分析してください。
+あなたは優秀なアシスタントです。
+以下の[前提情報]に基づき、提供されたYouTube動画の文字起こし（Transcript）を要約・解説してください。
 
 [前提情報]
 **現在の日付: ${today}**
-※動画内で語られる出来事がこの日付に近い場合、それは「過去〜現在の事実」として扱ってください。「未来の架空の話」と誤解しないように注意してください。
+
+【最重要ルール：最新情報の扱いについて】
+あなたの学習データ（知識）は過去のものであるため、**直近のニュースや市場動向（価格の急変動など）を知らない可能性があります。**
+したがって、動画内で語られている「最近の出来事」や「市場価格」については、**あなたの知識と異なっていても「動画の内容を最新の事実」として扱ってください。**
+「そのような事実は確認できない」「架空のシナリオである」といった指摘は**禁止**します。
 
 【構成】
-1. 📋 詳細要約 (Detailed Summary)
-   - 箇条書きで短く済ませず、文脈や論理展開が分かるように文章で記述してください。
-   - 専門用語には簡単な補足を加えてください。
+1. 📋 詳細要約
+   - 動画の主旨、市場の動き、投稿者の主張を、文脈を補いながら詳細に日本語で記述してください。
+   - 箇条書きではなく、読みやすい文章でまとめてください。
 
-2. 🕵️ ファクトチェック & 批判的分析 (Fact Check & Analysis)
-   - 動画内の主張を、あなたの持つ外部知識と照らし合わせてください。
-   - 「誤り」「誇張」「バイアス」があれば指摘してください。
-   - **重要:** 現在の日付(${today})を基準に判断してください。例えば「2026年の出来事」が語られていても、現在が2026年であればそれは「現実のニュース」です。
+2. 💡 ポイント解説 & 補足
+   - ファクトチェックの代わりに、動画内の主張が「なぜそのように言われているのか」の背景や、専門用語の解説を行ってください。
+   - 明らかな論理的矛盾がある場合のみ指摘し、外部情報の不足による否定はしないでください。
 
 【出力設定】
 - 言語: 日本語
-- 文体: 論理的かつ平易に
+- 文体: 丁寧かつ論理的に、読みやすく
             `;
 
             const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
@@ -205,7 +240,7 @@
                     const resultText = json.candidates[0].content.parts[0].text.trim();
                     resultBox.innerText = resultText;
                 } else {
-                    resultBox.innerHTML = `<span style="color:#ff6b6b">Error: ${json.error?.message || JSON.stringify(json)}</span>`;
+                    resultBox.innerHTML = `<span class="error-msg">Error: ${json.error?.message || JSON.stringify(json)}</span>`;
                 }
 
             } catch (e) {
@@ -213,4 +248,5 @@
             }
         }
     </script>
+</body>
 </html>
