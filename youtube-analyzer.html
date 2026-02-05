@@ -142,9 +142,12 @@
 
         async function analyzeVideo() {
             const text = document.getElementById('inputText').value;
-            const apiKey = localStorage.getItem("gemini_api_key"); // 共通のキーを使用
+            const apiKey = localStorage.getItem("gemini_api_key");
             const modelName = document.getElementById('modelSelect').value;
             const resultBox = document.getElementById('resultBox');
+
+            // ★追加：今日の日付を自動取得 (例: 2026年2月5日)
+            const today = new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' });
 
             if (!apiKey) {
                 alert("APIキーが見つかりません。先に翻訳ツール(Translator)でキーを保存してください。");
@@ -155,28 +158,30 @@
                 return;
             }
 
-            resultBox.innerHTML = '<span class="loading">Geminiが動画の内容を精査中...<br>※長文の場合、時間がかかることがあります</span>';
+            resultBox.innerHTML = '<span class="loading">Geminiが動画の内容を精査中...<br>※現在の日付(' + today + ')を基準に分析します</span>';
 
-            // ★ここが肝：詳細要約とファクトチェックのための指示書
+            // ★変更：日付を前提条件としてAIに渡す
             const systemInstruction = `
 あなたは優秀なリサーチャー兼ファクトチェッカーです。
-提供されたYouTube動画の文字起こし（Transcript）を読み、以下の構成で詳細な日本語レポートを作成してください。
+以下の[前提情報]に基づき、提供されたYouTube動画の文字起こし（Transcript）を分析してください。
+
+[前提情報]
+**現在の日付: ${today}**
+※動画内で語られる出来事がこの日付に近い場合、それは「過去〜現在の事実」として扱ってください。「未来の架空の話」と誤解しないように注意してください。
 
 【構成】
 1. 📋 詳細要約 (Detailed Summary)
    - 箇条書きで短く済ませず、文脈や論理展開が分かるように文章で記述してください。
-   - 動画の主張を漏らさず、しかし冗長な繰り返しは省いてください。
-   - 専門用語が出てきた場合は、簡単な補足を加えてください。
+   - 専門用語には簡単な補足を加えてください。
 
 2. 🕵️ ファクトチェック & 批判的分析 (Fact Check & Analysis)
-   - 動画内の主張に対して、あなたの持つ外部知識（科学、歴史、経済、統計など）と照らし合わせてください。
-   - 正確な点だけでなく、「誤り」「誇張」「バイアス（偏り）」「議論の余地がある点」があれば鋭く指摘してください。
-   - 動画が特定のポジション（肯定的/否定的）に偏っている場合は、その背景も考察してください。
+   - 動画内の主張を、あなたの持つ外部知識と照らし合わせてください。
+   - 「誤り」「誇張」「バイアス」があれば指摘してください。
+   - **重要:** 現在の日付(${today})を基準に判断してください。例えば「2026年の出来事」が語られていても、現在が2026年であればそれは「現実のニュース」です。
 
-【注意】
-- 出力はすべて日本語で行ってください。
-- タイムスタンプが含まれている場合は無視して内容を読み取ってください。
-- ユーザーは「要約しすぎないこと」を望んでいます。情報は厚めに記述してください。
+【出力設定】
+- 言語: 日本語
+- 文体: 論理的かつ平易に
             `;
 
             const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
@@ -208,5 +213,4 @@
             }
         }
     </script>
-</body>
 </html>
