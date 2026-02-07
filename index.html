@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Tools Collection</title>
+    <title>My Personal Tools</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -20,8 +20,9 @@
 
         .container {
             width: 90%;
-            max-width: 800px;
+            max-width: 900px;
             text-align: center;
+            padding: 40px 0;
         }
 
         h1 {
@@ -54,6 +55,7 @@
             flex-direction: column;
             align-items: center;
             gap: 15px;
+            height: 100%; /* 高さ揃え */
         }
 
         .tool-card:hover {
@@ -79,16 +81,11 @@
             line-height: 1.5;
         }
 
-        /* アクセントカラー */
-        .card-aoe .title { color: #f0a500; }
-        .card-trans .title { color: #2196F3; }
-        .card-yt .title { color: #ff0000; }
-
-        .disabled {
-            opacity: 0.4;
-            pointer-events: none;
-            border-style: dashed;
-        }
+        /* アクセントカラー設定 */
+        .card-trans .title { color: #2196F3; } /* Gemini Blue */
+        .card-yt .title    { color: #ff4444; } /* YouTube Red */
+        .card-music .title { color: #e91e63; } /* Player Pink */
+        .card-aoe .title   { color: #f0a500; } /* AoE Gold */
 
         footer {
             margin-top: 50px;
@@ -103,7 +100,7 @@
         <h1>My Personal Tools</h1>
 
         <div class="tools-grid">
-    
+            
             <a href="translator.html" class="tool-card card-trans">
                 <div class="icon">🤖</div>
                 <div class="title">AI Translator</div>
@@ -117,11 +114,20 @@
                 <div class="icon">▶️</div>
                 <div class="title">YouTube Analyzer</div>
                 <div class="desc">
-                    詳細要約 & 辛口ファクトチェック。<br>
+                    詳細要約 & 解説ツール。<br>
                     Glaspの文字起こしを貼り付けて分析。
                 </div>
             </a>
-            
+
+            <a href="music-player.html" class="tool-card card-music">
+                <div class="icon">🎵</div>
+                <div class="title">Stream Music Player</div>
+                <div class="desc">
+                    配信用のローカル音楽プレイヤー。<br>
+                    シャッフル・ループ・OBS表示対応。
+                </div>
+            </a>
+
             <a href="aoe-balancer.html" class="tool-card card-aoe">
                 <div class="icon">⚔️</div>
                 <div class="title">AoE Balancer</div>
@@ -140,7 +146,3 @@
 
 </body>
 </html>
-
-
-
-
