@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stream Music Player</title>
+    <style>
+        /* デザイン設定 */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #121212; /* 完全な黒に近い背景 */
+            color: #e0e0e0;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* 上部：プレイヤー操作部 */
+        .player-header {
+            background: #1e1e1e;
+            padding: 20px;
+            border-bottom: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            flex-shrink: 0;
+        }
+
+        /* Now Playing (OBSで切り抜きやすいように独立) */
+        .now-playing-box {
+            text-align: center;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        .now-playing-label {
+            font-size: 0.8rem;
+            color: #888;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        .track-title {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #4caf50; /* アクセントカラー */
+            margin: 5px 0;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* コントロールボタン群 */
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        button {
+            background: #333;
+            border: 1px solid #444;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        button:hover { background: #444; transform: scale(1.05); }
+        button:active { transform: scale(0.95); }
+
+        .btn-play {
+            background: #e91e63; /* Playボタンだけ目立たせる */
+            border-color: #e91e63;
+            width: 60px;
+            height: 60px;
+            font-size: 1.5rem;
+        }
+        
+        /* ボリュームとシークバー */
+        .sliders {
+            display: flex;
+            gap: 15px;
+            width: 100%;
+            max-width: 500px;
+            align-items: center;
+            font-size: 0.8rem;
+            color: #aaa;
+        }
+        input[type="range"] {
+            flex: 1;
+            cursor: pointer;
+            accent-color: #e91e63;
+        }
+
+        /* 下部：プレイリスト */
+        .playlist-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            background: #121212;
+        }
+        
+        .file-input-area {
+            text-align: center;
+            padding: 20px;
+            border: 2px dashed #444;
+            border-radius: 10px;
+            margin: 10px;
+            color: #777;
+            cursor: pointer;
+        }
+        .file-input-area:hover { border-color: #666; color: #aaa; }
+
+        .playlist-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 15px;
+            border-bottom: 1px solid #222;
+            cursor: pointer;
+            transition: background 0.1s;
+            font-size: 0.95rem;
+        }
+        .playlist-item:hover { background: #1e1e1e; }
+        .playlist-item.active {
+            background: #1a2e1a;
+            color: #4caf50;
+            font-weight: bold;
+            border-left: 4px solid #4caf50;
+        }
+        .duration { font-size: 0.8rem; color: #666; }
+
+        /* 機能スイッチ */
+        .toggles {
+            display: flex;
+            gap: 10px;
+            margin-top: 5px;
+        }
+        .toggle-btn {
+            font-size: 0.8rem;
+            padding: 5px 15px;
+            border-radius: 4px;
+            background: transparent;
+            border: 1px solid #444;
+            color: #888;
+        }
+        .toggle-btn.on {
+            background: #2196F3;
+            color: white;
+            border-color: #2196F3;
+        }
+
+    </style>
+</head>
+<body>
+
+    <audio id="audioPlayer"></audio>
+
+    <div class="player-header">
+        <div class="now-playing-box">
+            <div class="now-playing-label">NOW PLAYING</div>
+            <div class="track-title" id="currentTitle">Not Playing</div>
+        </div>
+
+        <div class="sliders">
+            <span>Vol</span>
+            <input type="range" id="volumeSlider" min="0" max="1" step="0.05" value="0.3">
+            <span>Seek</span>
+            <input type="range" id="seekSlider" min="0" max="100" value="0">
+        </div>
+
+        <div class="controls">
+            <button onclick="playPrev()">⏮</button>
+            <button class="btn-play" onclick="togglePlay()" id="playBtn">▶</button>
+            <button onclick="playNext()">⏭</button>
+        </div>
+
+        <div class="toggles">
+            <button class="toggle-btn" id="shuffleBtn" onclick="toggleShuffle()">🔀 Shuffle: OFF</button>
+            <button class="toggle-btn on" id="loopBtn" onclick="toggleLoop()">🔁 Loop: ALL</button>
+        </div>
+    </div>
+
+    <div class="playlist-container" id="playlistBox">
+        <div class="file-input-area" onclick="document.getElementById('fileInput').click()">
+            📂 クリックして音楽ファイル(mp3/wav等)を選択<br>
+            (複数選択可 / フォルダ内の全曲選択もOK)
+        </div>
+    </div>
+
+    <input type="file" id="fileInput" multiple accept="audio/*" style="display:none" onchange="loadFiles(this.files)">
+
+    <script>
+        const audio = document.getElementById('audioPlayer');
+        const playBtn = document.getElementById('playBtn');
+        const playlistBox = document.getElementById('playlistBox');
+        const currentTitle = document.getElementById('currentTitle');
+        const seekSlider = document.getElementById('seekSlider');
+        const volumeSlider = document.getElementById('volumeSlider');
+        
+        let playlist = [];     // 曲リスト
+        let currentIndex = 0;  // 現在の曲番号
+        let isShuffle = false;
+        let isPlaying = false;
+
+        // 1. ファイル読み込み処理
+        function loadFiles(files) {
+            // 既存リストに追加する形で読み込む
+            const startIdx = playlist.length;
+            
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                // オーディオファイルのみ許可
+                if (file.type.startsWith('audio/')) {
+                    playlist.push({
+                        name: file.name.replace(/\.[^/.]+$/, ""), // 拡張子削除
+                        file: file,
+                        url: URL.createObjectURL(file)
+                    });
+                }
+            }
+
+            renderPlaylist();
+            
+            // 初回読み込み時のみ、最初の曲をセット（再生はしない）
+            if (startIdx === 0 && playlist.length > 0) {
+                loadTrack(0);
+            }
+        }
+
+        // 2. プレイリスト描画
+        function renderPlaylist() {
+            // ファイル選択エリアを残すため、一度中身をクリアせずに追加したいが
+            // シンプルにするため再描画方式にする（選択エリアは再生成）
+            playlistBox.innerHTML = `
+                <div class="file-input-area" onclick="document.getElementById('fileInput').click()">
+                    📂 追加読み込み (クリック)
+                </div>
+            `;
+
+            playlist.forEach((track, index) => {
+                const div = document.createElement('div');
+                div.className = `playlist-item ${index === currentIndex ? 'active' : ''}`;
+                div.onclick = () => playTrack(index);
+                div.innerHTML = `
+                    <span>${index + 1}. ${track.name}</span>
+                `;
+                playlistBox.appendChild(div);
+            });
+        }
+
+        // 3. 再生制御
+        function loadTrack(index) {
+            if (playlist.length === 0) return;
+            
+            currentIndex = index;
+            audio.src = playlist[index].url;
+            audio.load();
+            
+            currentTitle.innerText = playlist[index].name;
+            renderPlaylist(); // アクティブ表示更新
+            
+            // 再生状態なら再生する
+            if (isPlaying) {
+                audio.play();
+            }
+        }
+
+        function playTrack(index) {
+            isPlaying = true;
+            loadTrack(index);
+            audio.play();
+            updatePlayBtn();
+        }
+
+        function togglePlay() {
+            if (playlist.length === 0) return;
+            
+            if (audio.paused) {
+                audio.play();
+                isPlaying = true;
+            } else {
+                audio.pause();
+                isPlaying = false;
+            }
+            updatePlayBtn();
+        }
+
+        function updatePlayBtn() {
+            playBtn.innerText = isPlaying ? "⏸" : "▶";
+        }
+
+        function playNext() {
+            if (playlist.length === 0) return;
+
+            let nextIndex;
+            if (isShuffle) {
+                // ランダム選択
+                nextIndex = Math.floor(Math.random() * playlist.length);
+            } else {
+                // 次の曲（最後なら最初へ）
+                nextIndex = (currentIndex + 1) % playlist.length;
+            }
+            playTrack(nextIndex);
+        }
+
+        function playPrev() {
+            if (playlist.length === 0) return;
+            // 前の曲（0なら最後へ）
+            let prevIndex = (currentIndex - 1 + playlist.length) % playlist.length;
+            playTrack(prevIndex);
+        }
+
+        // 4. イベントリスナー系
+        // 曲が終わったら自動で次へ
+        audio.addEventListener('ended', playNext);
+
+        // シークバーの更新
+        audio.addEventListener('timeupdate', () => {
+            if(audio.duration) {
+                seekSlider.value = (audio.currentTime / audio.duration) * 100;
+            }
+        });
+
+        // シーク操作
+        seekSlider.addEventListener('input', () => {
+            if(audio.duration) {
+                audio.currentTime = (seekSlider.value / 100) * audio.duration;
+            }
+        });
+
+        // ボリューム操作
+        volumeSlider.addEventListener('input', () => {
+            audio.volume = volumeSlider.value;
+        });
+
+        // シャッフル切り替え
+        function toggleShuffle() {
+            isShuffle = !isShuffle;
+            const btn = document.getElementById('shuffleBtn');
+            if (isShuffle) {
+                btn.classList.add('on');
+                btn.innerText = "🔀 Shuffle: ON";
+            } else {
+                btn.classList.remove('on');
+                btn.innerText = "🔀 Shuffle: OFF";
+            }
+        }
+        
+        // ループは基本ON固定にしていますが、見た目だけ実装（機能はplayNextで実装済み）
+        function toggleLoop() {
+            // 今は簡易版なのでループALL固定
+            alert("現在は「全曲ループ」のみ対応しています");
+        }
+        
+        // 初期ボリューム設定
+        audio.volume = 0.3;
+
+    </script>
+</body>
+</html>
