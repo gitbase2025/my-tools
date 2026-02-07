@@ -8,7 +8,7 @@
         /* デザイン設定 */
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #121212; /* 完全な黒に近い背景 */
+            background-color: #121212;
             color: #e0e0e0;
             margin: 0;
             padding: 0;
@@ -30,7 +30,7 @@
             flex-shrink: 0;
         }
 
-        /* Now Playing (OBSで切り抜きやすいように独立) */
+        /* Now Playing */
         .now-playing-box {
             text-align: center;
             width: 100%;
@@ -45,7 +45,7 @@
         .track-title {
             font-size: 1.8rem;
             font-weight: bold;
-            color: #4caf50; /* アクセントカラー */
+            color: #e91e63; /* ピンクに変更 */
             margin: 5px 0;
             text-shadow: 0 2px 4px rgba(0,0,0,0.5);
             white-space: nowrap;
@@ -77,7 +77,7 @@
         button:active { transform: scale(0.95); }
 
         .btn-play {
-            background: #e91e63; /* Playボタンだけ目立たせる */
+            background: #e91e63;
             border-color: #e91e63;
             width: 60px;
             height: 60px;
@@ -130,12 +130,11 @@
         }
         .playlist-item:hover { background: #1e1e1e; }
         .playlist-item.active {
-            background: #1a2e1a;
-            color: #4caf50;
+            background: #2d1a22; /* ピンク系の暗い背景 */
+            color: #e91e63;
             font-weight: bold;
-            border-left: 4px solid #4caf50;
+            border-left: 4px solid #e91e63;
         }
-        .duration { font-size: 0.8rem; color: #666; }
 
         /* 機能スイッチ */
         .toggles {
@@ -152,9 +151,9 @@
             color: #888;
         }
         .toggle-btn.on {
-            background: #2196F3;
+            background: #e91e63;
             color: white;
-            border-color: #2196F3;
+            border-color: #e91e63;
         }
 
     </style>
@@ -171,7 +170,7 @@
 
         <div class="sliders">
             <span>Vol</span>
-            <input type="range" id="volumeSlider" min="0" max="1" step="0.05" value="0.3">
+            <input type="range" id="volumeSlider" min="0" max="1" step="0.05" value="1">
             <span>Seek</span>
             <input type="range" id="seekSlider" min="0" max="100" value="0">
         </div>
@@ -205,72 +204,55 @@
         const seekSlider = document.getElementById('seekSlider');
         const volumeSlider = document.getElementById('volumeSlider');
         
-        let playlist = [];     // 曲リスト
-        let currentIndex = 0;  // 現在の曲番号
+        let playlist = [];     
+        let currentIndex = 0;  
         let isShuffle = false;
         let isPlaying = false;
 
-        // 1. ファイル読み込み処理
+        // ★修正点：初期音量を最大(1.0)にする
+        audio.volume = 1.0; 
+
         function loadFiles(files) {
-            // 既存リストに追加する形で読み込む
             const startIdx = playlist.length;
-            
             for (let i = 0; i < files.length; i++) {
                 const file = files[i];
-                // オーディオファイルのみ許可
                 if (file.type.startsWith('audio/')) {
                     playlist.push({
-                        name: file.name.replace(/\.[^/.]+$/, ""), // 拡張子削除
+                        name: file.name.replace(/\.[^/.]+$/, ""),
                         file: file,
                         url: URL.createObjectURL(file)
                     });
                 }
             }
-
             renderPlaylist();
-            
-            // 初回読み込み時のみ、最初の曲をセット（再生はしない）
             if (startIdx === 0 && playlist.length > 0) {
                 loadTrack(0);
             }
         }
 
-        // 2. プレイリスト描画
         function renderPlaylist() {
-            // ファイル選択エリアを残すため、一度中身をクリアせずに追加したいが
-            // シンプルにするため再描画方式にする（選択エリアは再生成）
             playlistBox.innerHTML = `
                 <div class="file-input-area" onclick="document.getElementById('fileInput').click()">
                     📂 追加読み込み (クリック)
                 </div>
             `;
-
             playlist.forEach((track, index) => {
                 const div = document.createElement('div');
                 div.className = `playlist-item ${index === currentIndex ? 'active' : ''}`;
                 div.onclick = () => playTrack(index);
-                div.innerHTML = `
-                    <span>${index + 1}. ${track.name}</span>
-                `;
+                div.innerHTML = `<span>${index + 1}. ${track.name}</span>`;
                 playlistBox.appendChild(div);
             });
         }
 
-        // 3. 再生制御
         function loadTrack(index) {
             if (playlist.length === 0) return;
-            
             currentIndex = index;
             audio.src = playlist[index].url;
             audio.load();
-            
             currentTitle.innerText = playlist[index].name;
-            renderPlaylist(); // アクティブ表示更新
-            
-            // 再生状態なら再生する
-            if (isPlaying) {
-                audio.play();
-            }
+            renderPlaylist();
+            if (isPlaying) audio.play();
         }
 
         function playTrack(index) {
@@ -282,7 +264,6 @@
 
         function togglePlay() {
             if (playlist.length === 0) return;
-            
             if (audio.paused) {
                 audio.play();
                 isPlaying = true;
@@ -299,13 +280,10 @@
 
         function playNext() {
             if (playlist.length === 0) return;
-
             let nextIndex;
             if (isShuffle) {
-                // ランダム選択
                 nextIndex = Math.floor(Math.random() * playlist.length);
             } else {
-                // 次の曲（最後なら最初へ）
                 nextIndex = (currentIndex + 1) % playlist.length;
             }
             playTrack(nextIndex);
@@ -313,35 +291,28 @@
 
         function playPrev() {
             if (playlist.length === 0) return;
-            // 前の曲（0なら最後へ）
             let prevIndex = (currentIndex - 1 + playlist.length) % playlist.length;
             playTrack(prevIndex);
         }
 
-        // 4. イベントリスナー系
-        // 曲が終わったら自動で次へ
         audio.addEventListener('ended', playNext);
 
-        // シークバーの更新
         audio.addEventListener('timeupdate', () => {
             if(audio.duration) {
                 seekSlider.value = (audio.currentTime / audio.duration) * 100;
             }
         });
 
-        // シーク操作
         seekSlider.addEventListener('input', () => {
             if(audio.duration) {
                 audio.currentTime = (seekSlider.value / 100) * audio.duration;
             }
         });
 
-        // ボリューム操作
         volumeSlider.addEventListener('input', () => {
             audio.volume = volumeSlider.value;
         });
 
-        // シャッフル切り替え
         function toggleShuffle() {
             isShuffle = !isShuffle;
             const btn = document.getElementById('shuffleBtn');
@@ -354,14 +325,9 @@
             }
         }
         
-        // ループは基本ON固定にしていますが、見た目だけ実装（機能はplayNextで実装済み）
         function toggleLoop() {
-            // 今は簡易版なのでループALL固定
             alert("現在は「全曲ループ」のみ対応しています");
         }
-        
-        // 初期ボリューム設定
-        audio.volume = 0.3;
 
     </script>
 </body>
