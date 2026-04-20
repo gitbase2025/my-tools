@@ -8,8 +8,8 @@
         /* 基本デザイン (ライトモード) */
         body { 
             font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
-            background-color: #f4f6f9; /* 目に優しい薄いグレー */
-            color: #333333; /* 濃いグレーの文字 */
+            background-color: #f4f6f9; 
+            color: #333333; 
             margin: 0;
             padding: 0;
             height: 100vh;
@@ -28,10 +28,9 @@
             gap: 15px;
         }
 
-        /* ヘッダー */
         h1 { 
             text-align: center; 
-            color: #cc0000; /* YouTube Red (少し暗め) */
+            color: #cc0000; 
             margin: 0; 
             font-size: 1.5rem; 
             font-weight: bold; 
@@ -116,7 +115,6 @@
             box-shadow: 0 4px 10px rgba(0,0,0,0.05);
         }
         
-        /* 見出し装飾 */
         .result-box strong { 
             color: #cc0000;
             background: #fff0f0;
@@ -131,7 +129,17 @@
             margin-top: 20px; 
             display: block;
         }
-        .error-msg { color: #d32f2f; font-weight: bold; }
+        
+        /* エラーメッセージ用の装飾 */
+        .error-msg { 
+            color: #d32f2f; 
+            font-weight: bold; 
+            background: #ffebee;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #ffcdd2;
+            display: inline-block;
+        }
     </style>
 </head>
 <body>
@@ -142,8 +150,10 @@
         <div class="settings-area">
             <select id="modelSelect">
                 <option value="gemini-2.5-flash">gemini-2.5-flash (推奨・高速)</option>
-                <option value="gemini-2.5-pro">gemini-2.5-pro (高精度・長文向き)</option>
-                <option value="gemini-2.0-flash">gemini-2.0-flash (安定)</option>
+                <option value="gemini-2.0-flash">gemini-2.0-flash (安定・混雑回避用)</option>
+                <option value="gemini-2.5-flash-lite">gemini-2.5-flash-lite (軽量・超高速)</option>
+                <option value="gemini-exp-1206">gemini-exp-1206 (実験版モデル)</option>
+                <option value="gemini-2.5-pro">gemini-2.5-pro (高精度・重め)</option>
             </select>
         </div>
 
@@ -159,7 +169,6 @@
     </div>
 
     <script>
-        // 起動時に設定をロード
         window.onload = function() {
             const savedModel = localStorage.getItem("gemini_model");
             if (savedModel) {
@@ -167,7 +176,6 @@
             }
         };
 
-        // モデル変更を保存
         document.getElementById('modelSelect').addEventListener('change', function() {
             localStorage.setItem("gemini_model", this.value);
         });
@@ -178,7 +186,6 @@
             const modelName = document.getElementById('modelSelect').value;
             const resultBox = document.getElementById('resultBox');
 
-            // 今日日時の自動取得
             const today = new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' });
 
             if (!apiKey) {
@@ -192,7 +199,6 @@
 
             resultBox.innerHTML = '<span class="loading">Geminiが動画の内容を精査中...<br>※現在の日付(' + today + ')を基準に分析します</span>';
 
-            // ★改良版：最新情報を優先し、過度な批判を防ぐ指示
             const systemInstruction = `
 あなたは優秀なアシスタントです。
 以下の[前提情報]に基づき、提供されたYouTube動画の文字起こし（Transcript）を要約・解説してください。
@@ -201,18 +207,15 @@
 **現在の日付: ${today}**
 
 【最重要ルール：最新情報の扱いについて】
-あなたの学習データ（知識）は過去のものであるため、**直近のニュースや市場動向（価格の急変動など）を知らない可能性があります。**
-したがって、動画内で語られている「最近の出来事」や「市場価格」については、**あなたの知識と異なっていても「動画の内容を最新の事実」として扱ってください。**
-「そのような事実は確認できない」「架空のシナリオである」といった指摘は**禁止**します。
+あなたの学習データ（知識）は過去のものであるため、直近のニュースや市場動向（価格の急変動など）を知らない可能性があります。
+したがって、動画内で語られている「最近の出来事」や「市場価格」については、あなたの知識と異なっていても「動画の内容を最新の事実」として扱ってください。
+「そのような事実は確認できない」「架空のシナリオである」といった指摘は禁止します。
 
 【構成】
 1. 📋 詳細要約
-   - 動画の主旨、市場の動き、投稿者の主張を、文脈を補いながら詳細に日本語で記述してください。
-   - 箇条書きではなく、読みやすい文章でまとめてください。
-
+   - 動画の主旨、市場の動き、投稿者の主張を詳細に記述してください。
 2. 💡 ポイント解説 & 補足
-   - ファクトチェックの代わりに、動画内の主張が「なぜそのように言われているのか」の背景や、専門用語の解説を行ってください。
-   - 明らかな論理的矛盾がある場合のみ指摘し、外部情報の不足による否定はしないでください。
+   - 専門用語の解説や、動画の背景事情を補足してください。
 
 【出力設定】
 - 言語: 日本語
@@ -240,11 +243,24 @@
                     const resultText = json.candidates[0].content.parts[0].text.trim();
                     resultBox.innerText = resultText;
                 } else {
-                    resultBox.innerHTML = `<span class="error-msg">Error: ${json.error?.message || JSON.stringify(json)}</span>`;
+                    // ★ エラー時の親切なメッセージ処理を追加
+                    const errorMsg = json.error?.message || "";
+                    if (errorMsg.includes("high demand") || errorMsg.includes("503")) {
+                        resultBox.innerHTML = `
+                            <div class="error-msg">
+                                ⚠️ サーバー混雑エラー<br><br>
+                                現在、選択中のモデル（${modelName}）に世界中からアクセスが集中しており、サーバーが応答できません。<br><br>
+                                💡 <b>対策:</b><br>
+                                上のプルダウンメニューから <b>gemini-2.0-flash</b> や <b>gemini-2.5-flash-lite</b> など、別のモデルを選択して再度お試しください。
+                            </div>
+                        `;
+                    } else {
+                        resultBox.innerHTML = `<span class="error-msg">Error: ${errorMsg || JSON.stringify(json)}</span>`;
+                    }
                 }
 
             } catch (e) {
-                resultBox.innerText = "Connection Error: " + e.message;
+                resultBox.innerHTML = `<span class="error-msg">通信エラーが発生しました。<br>インターネット接続を確認するか、少し待ってから再度お試しください。<br>詳細: ${e.message}</span>`;
             }
         }
     </script>
